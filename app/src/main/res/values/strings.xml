@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Xperia Dialer</string>
+    <string name="incoming_call">来电</string>
+    <string name="unknown_number">未知号码</string>
+    <string name="private_number">私密号码</string>
+    <string name="notification_channel_incoming">来电</string>
+    <string name="notification_channel_ongoing">通话中</string>
+    <string name="notification_channel_screening">拦截记录</string>
+</resources>

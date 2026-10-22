@@ -1,0 +1,14 @@
+# 统一换行，避免 Windows 上提交后 sh 脚本被改成 CRLF
+* text=auto eol=lf
+
+# Windows 脚本保持 CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 二进制，不要做任何转换
+*.png binary
+*.jpg binary
+*.dat binary
+*.jar binary
+*.keystore binary
+*.apk binary

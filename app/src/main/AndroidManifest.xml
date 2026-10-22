@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ============ 权限 ============ -->
+    <!-- 拨号 -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- 通话记录（P4 通话记录改版用） -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.WRITE_CALL_LOG" />
+    <!-- 联系人：读（T9 拼音搜索）+ 写（联系人卡片的编辑/新建/收藏/删除） -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <!-- Telecom 通话控制 -->
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    <!-- 前台服务：Android 14+ 必须声明具体类型 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <!-- 通知与锁屏全屏来电 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- 音频路由 -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- 通话时贴近耳朵息屏（PROXIMITY_SCREEN_OFF_WAKE_LOCK） -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- 声明使用的硬件特性，避免商店过滤 -->
+    <uses-feature android:name="android.hardware.telephony" android:required="true" />
+
+    <!-- Android 11+ 包可见性：不声明则查不到其他拨号器，诊断面板会误报且无法解析角色申请页 -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.telecom.InCallService" />
+        </intent>
+        <intent>
+            <action android:name="android.app.role.action.REQUEST_ROLE" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.MANAGE_DEFAULT_APPS_SETTINGS" />
+        </intent>
+        <package android:name="com.google.android.permissioncontroller" />
+        <package android:name="com.android.permissioncontroller" />
+    </queries>
+
+    <application
+        android:name=".DialerApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.XperiaDialer">
+
+        <!-- ============ 主页：必须有两个 DIAL intent-filter 才会出现在「默认电话应用」列表 ============ -->
+        <!-- screenOrientation 锁竖屏：拨号盘、列表、卡片都按竖屏排版，横过来只会错位 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.XperiaDialer">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- 关键 1：带 tel scheme（必须带 DEFAULT，否则隐式 intent 解析不到，
+                 会导致 ROLE_DIALER 资格判定的第二个 required activity 缺失） -->
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="tel" />
+            </intent-filter>
+            <!-- 点号码链接也能进拨号盘 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tel" />
+            </intent-filter>
+
+            <!-- 关键 2：不带 scheme（ROLE_DIALER 资格判定的第一个 required activity） -->
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- 耳机/拨号键直接呼出拨号盘 -->
+            <intent-filter>
+                <action android:name="android.intent.action.CALL_BUTTON" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- ============ 来电 / 通话中界面：锁屏上全屏显示 ============ -->
+        <!-- 注意：不能用 android:noHistory="true"。通话界面一旦短暂不可见就会被销毁，
+             导致通话中界面丢失（切通知栏、锁屏解锁都会触发）。
+             screenOrientation 锁竖屏：通话界面横过来既难看又容易误触。 -->
+        <activity
+            android:name=".call.InCallActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.XperiaDialer.InCall" />
+
+        <!-- ============ InCallService：自绘来电界面的核心 ============ -->
+        <service
+            android:name=".call.InCallServiceImpl"
+            android:exported="true"
+            android:permission="android.permission.BIND_INCALL_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+            <!-- meta-data 名字必须与 TelecomManager 常量一致 -->
+            <meta-data
+                android:name="android.telecom.IN_CALL_SERVICE_UI"
+                android:value="true" />
+            <!-- 注意：不要声明 IN_CALL_SERVICE_RINGING=true。
+                 声明后铃声由本 App 负责播放，P0 尚未实现会导致来电静音。
+                 不声明则由 Telecom 框架播放系统铃声。P2 需自定义铃声时再打开。 -->
+        </service>
+
+        <!-- ============ CallScreeningService：来电拦截/筛选（P2 骚扰识别接这里） ============ -->
+        <service
+            android:name=".screen.CallScreeningServiceImpl"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
+        <!-- ============ 前台服务：Android 14+ 必须声明 foregroundServiceType ============ -->
+        <service
+            android:name=".call.CallForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
+
+        <!-- ============ 通知上的接听/挂断按钮 ============ -->
+        <receiver
+            android:name=".call.CallActionReceiver"
+            android:exported="false" />
+
+    </application>
+
+</manifest>

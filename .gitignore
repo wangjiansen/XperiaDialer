@@ -1,0 +1,23 @@
+# Gradle / Android
+.gradle/
+build/
+.kotlin/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 构建产物
+*.apk
+*.aab
+*.dex
+
+# IDE
+*.iml
+.idea/
+.DS_Store
+
+# 本机运行产物（logs-call.cmd / logs.cmd 生成）
+call-log.txt
+call-crash.txt
+*.log
