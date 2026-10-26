@@ -181,6 +181,22 @@ fun DialerHome(
                 }
             }
 
+        }
+
+        /*
+         * ---------- 键盘面板（悬浮） ----------
+         *
+         * 对齐原机：整个键盘是一块白色面板，浮在页面底色之上，面板顶边向上一段
+         * 渐隐的投影把两层分开。不能用 Modifier.shadow —— 它只往下投，
+         * 而这里是面板盖住了上方内容，阴影要往上扩散。
+         */
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .dialPadPanel()
+                .padding(top = 10.dp)
+        ) {
+            // ---------- 号码显示行（面板顶部，阴影落在它上方） ----------
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -254,21 +270,7 @@ fun DialerHome(
             VerdictLine(verdict, modifier = Modifier.padding(horizontal = 8.dp))
             // 号码区与键盘之间留足呼吸，否则识别结果一出现就显得挤在一起
             Spacer(Modifier.height(20.dp))
-        }
 
-        /*
-         * ---------- 键盘面板（悬浮） ----------
-         *
-         * 对齐原机：整个键盘是一块白色面板，浮在页面底色之上，面板顶边向上一段
-         * 渐隐的投影把两层分开。不能用 Modifier.shadow —— 它只往下投，
-         * 而这里是面板盖住了上方内容，阴影要往上扩散。
-         */
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .dialPadPanel()
-                .padding(top = 10.dp)
-        ) {
             // ---------- 数字键盘 ----------
             SonyDialPad(
                 onDigit = onDigit,
