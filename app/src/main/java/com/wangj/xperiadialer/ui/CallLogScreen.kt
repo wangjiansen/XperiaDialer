@@ -210,7 +210,7 @@ private fun CallLogRow(
                 .clip(CircleShape)
                 .clickable(onClick = onAvatarClick)
         ) {
-            LetterAvatar(
+            PhoneAvatar(
                 name = entry.name,
                 number = entry.number,
                 colorKey = entry.number,

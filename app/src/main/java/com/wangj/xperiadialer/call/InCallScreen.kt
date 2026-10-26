@@ -72,7 +72,7 @@ import com.wangj.xperiadialer.data.PhoneLocationDb
 import com.wangj.xperiadialer.data.SpamAnalyzer
 import com.wangj.xperiadialer.data.SpamLevel
 import com.wangj.xperiadialer.data.SpamVerdict
-import com.wangj.xperiadialer.ui.LetterAvatar
+import com.wangj.xperiadialer.ui.PhoneAvatar
 import com.wangj.xperiadialer.ui.SonyColors
 import com.wangj.xperiadialer.ui.SonyDialPad
 import com.wangj.xperiadialer.ui.holdToRepeat
@@ -162,18 +162,26 @@ fun InCallScreen(onFinish: () -> Unit) {
     }
 }
 
-/** 风险标签徽章 + 归属地。UNKNOWN 且无归属地时整行不显示。 */
+/**
+ * 风险标签徽章 + 归属地。UNKNOWN 且无归属地时整行不显示。
+ *
+ * @param shownName 界面上已经显示的主标题。黄页命中时主标题就是机构名，
+ *                  此时徽章若还打机构名就重复了，改显示分类（如「快递物流」「金融银行」）。
+ */
 @Composable
-private fun VerdictRow(verdict: SpamVerdict?) {
+private fun VerdictRow(verdict: SpamVerdict?, shownName: String = "") {
     if (verdict == null) return
     val location = verdict.location?.display.orEmpty()
     val carrier = verdict.location?.carrier.orEmpty()
     val sub = listOf(location, carrier).filter { it.isNotBlank() }.joinToString(" · ")
 
-    if (!verdict.hasLabel && sub.isBlank()) return
+    val duplicated = shownName.isNotBlank() && shownName.trim() == verdict.label
+    val badge = if (duplicated) verdict.reason else verdict.label
+
+    if (badge.isBlank() && sub.isBlank()) return
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (verdict.hasLabel) {
+        if (badge.isNotBlank()) {
             val bg = when (verdict.level) {
                 SpamLevel.SPAM -> SonyColors.EndCallRed
                 SpamLevel.CAUTION -> Color(0xFFEF6C00)
@@ -186,7 +194,7 @@ private fun VerdictRow(verdict: SpamVerdict?) {
                     .background(bg)
                     .padding(horizontal = 7.dp, vertical = 2.dp)
             ) {
-                Text(verdict.label, color = Color.White, fontSize = 11.sp)
+                Text(badge, color = Color.White, fontSize = 11.sp)
             }
             if (sub.isNotBlank()) Spacer(Modifier.width(8.dp))
         }
@@ -205,7 +213,7 @@ private fun IncomingContent(info: CallInfo, verdict: SpamVerdict?) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(96.dp))
-            LetterAvatar(
+            PhoneAvatar(
                 name = info.displayName,
                 number = info.number,
                 colorKey = info.number,
@@ -245,7 +253,7 @@ private fun IncomingContent(info: CallInfo, verdict: SpamVerdict?) {
             }
             // 风险标签 + 归属地
             Spacer(Modifier.height(12.dp))
-            VerdictRow(verdict)
+            VerdictRow(verdict, info.displayName)
         }
 
         SlideToAnswer(
@@ -476,7 +484,7 @@ private fun OngoingContent(info: CallInfo, state: CallUiState, now: Long, verdic
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(72.dp))
-            LetterAvatar(
+            PhoneAvatar(
                 name = info.displayName,
                 number = info.number,
                 colorKey = info.number,
@@ -527,7 +535,7 @@ private fun OngoingContent(info: CallInfo, state: CallUiState, now: Long, verdic
                 color = SonyColors.TextSecondary
             )
             Spacer(Modifier.height(10.dp))
-            VerdictRow(verdict)
+            VerdictRow(verdict, info.displayName)
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

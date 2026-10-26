@@ -192,25 +192,38 @@ Telecom ──> InCallServiceImpl ──> CallManager(StateFlow) ──> InCallS
 
 ### 6. 黄页号码数据（可选，需要自己生成）
 
-来电时显示「顺丰速运」而不是「未知号码」，靠的是 `assets/phonebook.tsv`：
-600 余条企业/机构号码，由 [metowolf/vCards](https://github.com/metowolf/vCards) 转换而来。
+来电时显示「顺丰速运」而不是「未知号码」、并显示企业 logo，靠的是这两份资源：
+
+| 文件 | 内容 |
+|---|---|
+| `assets/phonebook.tsv` | 600+ 条号码索引，`号码\t机构名\t分类\tlogo文件名` |
+| `assets/logos/*.webp` | 317 个机构图标，160×160 白底圆形，共约 780 KB |
+
+数据由 [metowolf/vCards](https://github.com/metowolf/vCards) 转换而来。
 
 ```bash
-# 一键下载最新数据并生成（需要 GitHub CLI 和 Python）
+# 一键下载最新数据并生成（需要 GitHub CLI 和 Python + Pillow）
 tools\update-phonebook.cmd
 
 # 或者指定已有的数据目录
 python tools/gen_phonebook.py --src <vcards 仓库>/data
+python tools/gen_phonebook.py --src <...> --no-logos    # 只要索引不要图标
 ```
 
-**这个数据文件不在仓库里**（`.gitignore` 排除），原因是上游仓库没有 LICENSE，
+**这两份文件都不在仓库里**（`.gitignore` 排除），原因是上游仓库没有 LICENSE，
 打包分发有版权风险。数据缺失时 `PhoneBook.ensureLoaded()` 返回 false，
-自动降级到内置的 `KnownNumbers`（71 条银行/快递/航空/运营商），功能不受影响。
+自动降级到内置的 `KnownNumbers`（71 条银行/快递/航空/运营商）+ 字母头像，功能不受影响。
 
 号码匹配做了三层归一化：
 - 去 `+86` / `0086` 前缀（含漫游时的 `+8695338` 这种短号）
 - 带区号固话同时存 `01053153053` 和去 0 的 `1053153053`
 - 不做「纯本地 8 位号」匹配 —— 不同城市会撞号，误判代价高于收益
+
+**黄页数据只在 App 内部使用，不写系统通讯录**，和真实联系人是两条独立链路：
+- `PhoneBook` 只读 `assets/`，从不碰 `ContactsProvider`
+- 通讯录里的真人姓名永远优先；只有名字来自黄页（或压根没名字）时 `PhoneAvatar` 才显示 logo，
+  否则保持字母头像 —— 避免把通讯录里的「顺丰王师傅」显示成顺丰的企业图标
+- 主标题已经是机构名时，徽章改显示分类（「互联网」「快递物流」），不再重复机构名
 
 ---
 

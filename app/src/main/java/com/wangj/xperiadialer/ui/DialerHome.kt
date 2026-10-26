@@ -456,7 +456,7 @@ private fun ContactSuggestions(
                         .padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    LetterAvatar(
+                    PhoneAvatar(
                         name = hit.entry.name,
                         number = hit.entry.number,
                         colorKey = hit.entry.number,

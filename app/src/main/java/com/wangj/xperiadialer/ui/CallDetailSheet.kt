@@ -67,7 +67,7 @@ fun CallDetailSheet(
                     .padding(horizontal = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                LetterAvatar(
+                PhoneAvatar(
                     name = entry.name,
                     number = entry.number,
                     colorKey = entry.number,
