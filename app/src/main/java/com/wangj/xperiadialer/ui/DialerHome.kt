@@ -452,14 +452,16 @@ private fun ContactSuggestions(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(SUGGESTION_ROW_HEIGHT)
-                        .clickable { onPick(hit.entry) }
+                        // 用命中的号码而不是主号码：搜 02131088611 就该填这个，
+                        // 填成 02022888578 会让用户以为点错了人
+                        .clickable { onPick(hit.entry.copy(number = hit.displayNumber)) }
                         .padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     PhoneAvatar(
                         name = hit.entry.name,
-                        number = hit.entry.number,
-                        colorKey = hit.entry.number,
+                        number = hit.displayNumber,
+                        colorKey = hit.displayNumber,
                         size = 38.dp
                     )
                     Spacer(Modifier.width(12.dp))
@@ -474,7 +476,7 @@ private fun ContactSuggestions(
                         if (hit.entry.name.isNotBlank()) {
                             Spacer(Modifier.height(1.dp))
                             Text(
-                                text = hit.entry.number,
+                                text = hit.displayNumber,
                                 fontSize = 12.sp,
                                 color = SonyColors.TextTertiary,
                                 maxLines = 1,

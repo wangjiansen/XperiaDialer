@@ -125,7 +125,15 @@ object ContactsRepository {
         PINYIN_CONTAINS,   // 拼音中段
     }
 
-    data class Hit(val entry: Entry, val kind: MatchKind)
+    /**
+     * @param number 实际命中的那个号码。一个联系人有多个号码时，列表上只显示
+     *               主号码，但用户可能是敲第二个号码搜出来的 —— 建议列表要显示
+     *               他敲的那个，否则「输入 02131088611 却显示 02022888578」很费解。
+     */
+    data class Hit(val entry: Entry, val kind: MatchKind, val number: String = "") {
+        /** 建议列表展示用的号码：有命中号码就用它 */
+        val displayNumber: String get() = number.ifBlank { entry.number }
+    }
 
     /**
      * T9 搜索。
@@ -148,17 +156,23 @@ object ContactsRepository {
         for (e in entries) {
             // 号码匹配遍历这个人的所有号码：列表上只显示第一个，
             // 但搜第二个号码也得能把人搜出来
-            val numPrefix = e.allDigits.any { it.startsWith(digits) }
-            val numContains = !numPrefix && e.allDigits.any { it.contains(digits) }
+            val prefixNum = e.allDigits.firstOrNull { it.startsWith(digits) }
+            val containsNum =
+                if (prefixNum == null) e.allDigits.firstOrNull { it.contains(digits) } else null
             val kind = when {
-                numPrefix -> MatchKind.NUMBER_PREFIX
+                prefixNum != null -> MatchKind.NUMBER_PREFIX
                 e.t9Full.startsWith(digits) -> MatchKind.PINYIN_PREFIX
                 e.t9Initials.startsWith(digits) -> MatchKind.INITIALS_PREFIX
-                numContains -> MatchKind.NUMBER_CONTAINS
+                containsNum != null -> MatchKind.NUMBER_CONTAINS
                 e.t9Full.contains(digits) -> MatchKind.PINYIN_CONTAINS
                 else -> null
             } ?: continue
-            hits.add(Hit(e, kind))
+            val matched = prefixNum ?: containsNum
+            // 把命中的数字串换回原始写法（带横线/空格的那种），没有就退回主号码
+            val matchedNumber = matched
+                ?.let { d -> e.allNumbers.firstOrNull { PhoneLocationDb.normalize(it) == d } }
+                .orEmpty()
+            hits.add(Hit(e, kind, matchedNumber))
         }
         /*
          * 必须遍历完整个通讯录。
