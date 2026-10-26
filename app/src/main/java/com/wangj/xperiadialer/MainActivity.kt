@@ -276,6 +276,8 @@ fun MainScreen(initialNumber: String, homeResetTick: Int = 0) {
         number = number,
         verdict = verdict,
         onDigit = { number += it },
+        // 暂停/等待符：只拼进号码，不走按键反馈（它们不是拨号按键）
+        onAppendSymbol = { number += it },
         onBackspace = { number = number.dropLast(1) },
         onDial = { num -> dial(context, num, permLauncher) },
         // 点 T9 搜索结果：先把号码落进输入框再拨，万一拨出失败界面上留的是号码本身

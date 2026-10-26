@@ -64,6 +64,8 @@ fun HomeScaffold(
     number: String,
     verdict: SpamVerdict?,
     onDigit: (Char) -> Unit,
+    /** 往号码里追加 `,`（2 秒暂停）或 `;`（等待），不触发按键音 */
+    onAppendSymbol: (Char) -> Unit,
     onBackspace: () -> Unit,
     /** 拨指定号码：拨号页传当前输入，列表页传点击的那一行 */
     onDial: (String) -> Unit,
@@ -294,6 +296,7 @@ fun HomeScaffold(
                 verdict = verdict,
                 results = t9Hits,
                 onDigit = onDigit,
+                onAppendSymbol = onAppendSymbol,
                 onBackspace = onBackspace,
                 onDial = { onDial(number) },
                 onPickContact = onPickContact,

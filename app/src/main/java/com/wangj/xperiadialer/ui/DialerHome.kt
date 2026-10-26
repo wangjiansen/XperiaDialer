@@ -84,6 +84,13 @@ fun DialerHome(
     results: List<ContactsRepository.Hit>,
     onDigit: (Char) -> Unit,
     onBackspace: () -> Unit,
+    /**
+     * 往号码里追加控制字符：`,` 是 2 秒暂停、`;` 是等待。
+     *
+     * 和 [onDigit] 分开是刻意的 —— 这两个符号不该触发拨号音和震动，
+     * 它们不是按键输入，是号码里的控制符（拨分机号时有用）。
+     */
+    onAppendSymbol: (Char) -> Unit,
     onDial: () -> Unit,
     onPickContact: (ContactsRepository.Entry) -> Unit,
     onClose: () -> Unit,
@@ -175,6 +182,18 @@ fun DialerHome(
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                /*
+                 * 三段式布局，对齐原机：左侧「更多选项」⋮、中间号码、右侧删除。
+                 * 未输入时左侧用等宽占位，保证「输入号码」提示始终居中。
+                 */
+                if (number.isEmpty()) {
+                    Spacer(Modifier.size(44.dp))
+                } else {
+                    NumberMoreMenu(
+                        onPause = { onAppendSymbol(',') },
+                        onWait = { onAppendSymbol(';') },
+                    )
+                }
                 if (number.isEmpty()) {
                     Box(
                         modifier = Modifier
@@ -503,4 +522,54 @@ private fun ContactsRepository.MatchKind.hint(): String = when (this) {
     ContactsRepository.MatchKind.INITIALS_PREFIX -> "首字母"
     ContactsRepository.MatchKind.NUMBER_CONTAINS -> "号码"
     ContactsRepository.MatchKind.PINYIN_CONTAINS -> "拼音"
+}
+
+/**
+ * 号码行左侧的「更多选项」菜单，位置与内容对齐原机 Sony 拨号器。
+ *
+ * 两项都是号码里的控制字符，用于拨分机号：
+ * - `,` 2 秒暂停：`4001234567,8` 拨通后停 2 秒再自动送分机号
+ * - `;` 等待：`4001234567;8` 拨通后停下来等用户点确认再送
+ * 这两个是 Telecom 原生支持的符号，不需要我们做任何解析。
+ */
+@Composable
+private fun NumberMoreMenu(onPause: () -> Unit, onWait: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .clickable { open = true },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_sony_more),
+                contentDescription = "更多选项",
+                tint = SonyColors.TextSecondary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            // Material3 默认用 surfaceContainer（本主题下偏淡紫），原机是纯白
+            containerColor = Color.White,
+        ) {
+            DropdownMenuItem(
+                text = { Text("加入 2 秒暂停时间", fontSize = 14.sp) },
+                onClick = {
+                    open = false
+                    onPause()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("加入等待时间", fontSize = 14.sp) },
+                onClick = {
+                    open = false
+                    onWait()
+                }
+            )
+        }
+    }
 }

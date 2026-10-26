@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  号码行左侧的「更多选项」三点图标，位置对齐原机 Sony 拨号器。
+  颜色写白色，实际显示由 Icon(tint = ...) 覆盖，与项目其它 vector 一致。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,7m-1.7,0a1.7,1.7 0,1 1,3.4 0a1.7,1.7 0,1 1,-3.4 0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,12m-1.7,0a1.7,1.7 0,1 1,3.4 0a1.7,1.7 0,1 1,-3.4 0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,17m-1.7,0a1.7,1.7 0,1 1,3.4 0a1.7,1.7 0,1 1,-3.4 0" />
+</vector>
