@@ -191,18 +191,19 @@ fun SonyDialKey(
         modifier = modifier
             .height(64.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
             /*
-             * 涟漪必须是**圆**的，和原机一致。
+             * 涟漪要**无边界**（bounded = false）且半径够大，和原机一致。
              *
-             * 默认的 LocalIndication 是 bounded ripple，会按节点形状铺满整个键
-             * （约 110×64 的圆角矩形），点一下像一大块方块闪一下，很笨重。
-             * 把半径压到键高的一半，涟漪就成了一个以按下点为中心、直径等于键高
-             * 的圆；扩散到边界时正好是圆的顶端，视觉上轻盈得多。
+             * 默认的 LocalIndication 是 bounded ripple：按节点形状铺满整个键
+             * （约 110×64 的圆角矩形），点一下像一大块方块闪一下，很笨重；
+             * 而原机的涟漪是从按下点扩散、范围明显超出键本身的那种大圆。
+             *
+             * 因此这里不能保留 clip(RoundedCornerShape) —— clip 会把涟漪裁在
+             * 键的内部。键本身没有背景色，去掉 clip 对静态外观没有影响。
              */
             .clickable(
                 interactionSource = interaction,
-                indication = ripple(radius = KEY_RIPPLE_RADIUS),
+                indication = ripple(bounded = false, radius = KEY_RIPPLE_RADIUS),
                 onClick = { onDigit(digit) },
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -237,8 +238,8 @@ fun SonyDialKey(
 /** 字母槽高度：视觉上等于 10sp 文字 + 少量呼吸空间 */
 private val LETTER_SLOT_HEIGHT = 14.dp
 
-/** 按键涟漪半径：等于键高(64dp)的一半，最终呈现为一个圆而不是整块矩形 */
-private val KEY_RIPPLE_RADIUS = 32.dp
+/** 按键涟漪半径：明显大于键高(64dp)的一半，对齐原机那种「扩散很远」的大圆 */
+private val KEY_RIPPLE_RADIUS = 56.dp
 
 /** 3×4 完整拨号键盘 */
 @Composable
