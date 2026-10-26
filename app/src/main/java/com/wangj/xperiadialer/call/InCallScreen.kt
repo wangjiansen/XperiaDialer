@@ -212,9 +212,16 @@ private fun IncomingContent(info: CallInfo, verdict: SpamVerdict?) {
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            /*
+             * 主标题的优先级：通讯录姓名 > 黄页/服务号的机构名 > 号码本身。
+             * 黄页机构名（「顺丰速运」）是本地库查出来的，不写通讯录，
+             * 但作为标题比一串数字有用得多；通讯录里真有这个人时永远让位。
+             */
+            val title = info.displayName.ifBlank { verdict?.org.orEmpty() }
+
             Spacer(Modifier.height(96.dp))
             PhoneAvatar(
-                name = info.displayName,
+                name = title,
                 number = info.number,
                 colorKey = info.number,
                 size = 120.dp
@@ -228,10 +235,10 @@ private fun IncomingContent(info: CallInfo, verdict: SpamVerdict?) {
              * 没名字 → 号码大字（此时号码是唯一标识）
              * 和系统拨号器一致，别让用户盯着 11 位数字找是谁打来的。
              */
-            val hasName = info.displayName.isNotBlank()
+            val hasName = title.isNotBlank()
             Text(
                 text = when {
-                    hasName -> info.displayName
+                    hasName -> title
                     info.number.isBlank() -> "未知号码"
                     else -> info.number
                 },
@@ -253,7 +260,7 @@ private fun IncomingContent(info: CallInfo, verdict: SpamVerdict?) {
             }
             // 风险标签 + 归属地
             Spacer(Modifier.height(12.dp))
-            VerdictRow(verdict, info.displayName)
+            VerdictRow(verdict, title)
         }
 
         SlideToAnswer(
@@ -483,9 +490,12 @@ private fun OngoingContent(info: CallInfo, state: CallUiState, now: Long, verdic
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // 同来电界面：通讯录姓名 > 黄页机构名 > 号码
+            val title = info.displayName.ifBlank { verdict?.org.orEmpty() }
+
             Spacer(Modifier.height(72.dp))
             PhoneAvatar(
-                name = info.displayName,
+                name = title,
                 number = info.number,
                 colorKey = info.number,
                 size = 96.dp
@@ -503,10 +513,10 @@ private fun OngoingContent(info: CallInfo, state: CallUiState, now: Long, verdic
             )
             Spacer(Modifier.height(10.dp))
             // 同来电界面：有名字时名字当主标题，号码退成副标题
-            val hasName = info.displayName.isNotBlank()
+            val hasName = title.isNotBlank()
             Text(
                 text = when {
-                    hasName -> info.displayName
+                    hasName -> title
                     info.number.isBlank() -> "未知号码"
                     else -> info.number
                 },
@@ -535,7 +545,7 @@ private fun OngoingContent(info: CallInfo, state: CallUiState, now: Long, verdic
                 color = SonyColors.TextSecondary
             )
             Spacer(Modifier.height(10.dp))
-            VerdictRow(verdict, info.displayName)
+            VerdictRow(verdict, title)
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

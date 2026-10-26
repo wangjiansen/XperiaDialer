@@ -23,6 +23,8 @@ enum class SpamLevel {
  * @param label 界面上显示的短标签，如「企业客服」「虚拟运营商」；UNKNOWN 时为空
  * @param reason 命中原因，用于调试和后续「为什么标记它」的说明
  * @param block 是否拦截。本轮只对用户手动拉黑的号码生效，规则命中的一律只提示
+ * @param org 命中的机构名（黄页 / 内置服务号表）。UI 拿它当主标题 ——
+ *            「顺丰速运」比 95338 更易读，但通讯录里的真人姓名优先级更高
  */
 data class SpamVerdict(
     val level: SpamLevel,
@@ -30,6 +32,7 @@ data class SpamVerdict(
     val reason: String = "",
     val block: Boolean = false,
     val location: PhoneLocationDb.Info? = null,
+    val org: String? = null,
 ) {
     val hasLabel: Boolean get() = label.isNotBlank()
 
@@ -94,6 +97,7 @@ object SpamAnalyzer {
                 label = entry.name,
                 reason = entry.category,
                 location = location,
+                org = entry.name,
             )
         }
 
@@ -104,6 +108,7 @@ object SpamAnalyzer {
                 label = entry.name,
                 reason = entry.category,
                 location = location,
+                org = entry.name,
             )
         }
 

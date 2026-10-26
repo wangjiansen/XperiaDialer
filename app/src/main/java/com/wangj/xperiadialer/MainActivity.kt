@@ -386,10 +386,13 @@ private fun openInCall(context: Context) {
 }
 
 /**
- * 预览来电用的号码。改成你自己通讯录里真实存在的一个，
- * 才能验证「姓名由通讯录解析」这条链路；默认值是虚构号码。
+ * 预览来电用的号码。
+ *
+ * 默认是黄页里已有的「小米」北京固话，预览时能一次看到完整链路：
+ * 机构 logo + 机构名当主标题 + 分类徽章 + 归属地。
+ * 想验证「姓名由通讯录解析」就换成你通讯录里的号码（通讯录永远优先于黄页）。
  */
-private const val PREVIEW_INCOMING_NUMBER = "13800138000"
+private const val PREVIEW_INCOMING_NUMBER = "01060606666"
 
 /** 识别结果展示区的固定高度 */
 private val SPAM_PREVIEW_HEIGHT = 28.dp
