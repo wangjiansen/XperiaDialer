@@ -49,9 +49,10 @@ data class SpamVerdict(
  * 判定优先级（先命中先返回）：
  *   1. 用户黑名单  → 拦截
  *   2. 用户白名单  → 放行
- *   3. 公共服务号  → 放行
- *   4. 号段规则    → 提示（不拦截）
- *   5. 普通号码    → 仅展示归属地
+ *   3. 黄页号码库  → 显示机构名（600+ 条，来自 metowolf/vCards）
+ *   4. 内置服务号  → 显示机构名（黄页缺失时的兜底）
+ *   5. 号段规则    → 提示（不拦截）
+ *   6. 普通号码    → 仅展示归属地
  */
 object SpamAnalyzer {
 
@@ -85,8 +86,18 @@ object SpamAnalyzer {
             else -> Unit
         }
 
-        // 2. 已知服务号码：银行 / 快递 / 航空 / 保险 / 政务 / 运营商……
-        //    显示具体机构名，这是国产 ROM 来电黄页的核心体验
+        // 2. 黄页号码库：600+ 条企业/机构号码，覆盖银行、快递、电商、互联网、证券等
+        //    命中后直接显示机构名，这是国产 ROM 来电黄页的核心体验
+        PhoneBook.find(context, digits)?.let { entry ->
+            return SpamVerdict(
+                level = SpamLevel.SAFE,
+                label = entry.name,
+                reason = entry.category,
+                location = location,
+            )
+        }
+
+        // 3. 内置服务号表：黄页数据缺失或未收录时的兜底
         KnownNumbers.find(digits)?.let { entry ->
             return SpamVerdict(
                 level = SpamLevel.SAFE,
@@ -96,23 +107,23 @@ object SpamAnalyzer {
             )
         }
 
-        // 3. 内置应急号码
+        // 4. 内置应急号码
         if (digits in PUBLIC_SERVICE) {
             return SpamVerdict(SpamLevel.SAFE, "公共服务", "内置服务号", location = location)
         }
 
-        // 4. 国际 / 非中国大陆号码
+        // 5. 国际 / 非中国大陆号码
         val isInternational = rawNumber.trimStart().startsWith("+") || digits.startsWith("00")
         if (isInternational) {
             return SpamVerdict(SpamLevel.CAUTION, "国际来电", "非中国大陆号码", location = location)
         }
 
-        // 5. 号段规则
+        // 6. 号段规则
         matchSegmentRule(digits)?.let { (level, label, reason) ->
             return SpamVerdict(level, label, reason, location = location)
         }
 
-        // 6. 普通号码，只带归属地
+        // 7. 普通号码，只带归属地
         return SpamVerdict(SpamLevel.UNKNOWN, location = location)
     }
 

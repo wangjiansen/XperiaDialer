@@ -21,3 +21,7 @@ captures/
 call-log.txt
 call-crash.txt
 *.log
+
+# 黄页号码数据：上游 metowolf/vCards 没有 LICENSE，不随本仓库分发。
+# 用 tools/update-phonebook.cmd 在本机生成，缺失时代码自动降级到内置表。
+app/src/main/assets/phonebook.tsv

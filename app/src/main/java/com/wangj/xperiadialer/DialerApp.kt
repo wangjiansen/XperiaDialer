@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import com.wangj.xperiadialer.call.CallForegroundService
 import com.wangj.xperiadialer.call.CallNotificationManager
+import com.wangj.xperiadialer.data.PhoneBook
 import com.wangj.xperiadialer.data.PhoneLocationDb
 import java.util.concurrent.Executors
 
@@ -15,7 +16,7 @@ class DialerApp : Application() {
         CallNotificationManager.createChannels(this)
         installForegroundServiceCrashGuard()
 
-        // 号段库 4.6MB，提前在后台加载好，避免来电筛查时现读拖慢响应
+        // 号段库 4.6MB + 黄页库 600 条，提前在后台加载好，避免来电筛查时现读拖慢响应
         // （CallScreeningService 只有 5 秒窗口，超时会导致不响铃）
         Executors.newSingleThreadExecutor().execute {
             val start = System.currentTimeMillis()
@@ -23,6 +24,14 @@ class DialerApp : Application() {
             Log.i(
                 "DialerApp",
                 "phone.dat preload ${if (ok) "ok" else "failed"} in ${System.currentTimeMillis() - start}ms"
+            )
+
+            val t2 = System.currentTimeMillis()
+            val bookOk = PhoneBook.ensureLoaded(this)
+            Log.i(
+                "DialerApp",
+                "phonebook preload ${if (bookOk) "ok, ${PhoneBook.size} entries" else "failed"} " +
+                    "in ${System.currentTimeMillis() - t2}ms"
             )
         }
     }

@@ -190,6 +190,28 @@ Telecom ──> InCallServiceImpl ──> CallManager(StateFlow) ──> InCallS
 - 动态注册广播必须显式指定 `RECEIVER_EXPORTED` / `RECEIVER_NOT_EXPORTED`
 - Android 16 已知问题：被静音拦截的电话，系统仍会弹「未接来电」通知（issuetracker #474398435）
 
+### 6. 黄页号码数据（可选，需要自己生成）
+
+来电时显示「顺丰速运」而不是「未知号码」，靠的是 `assets/phonebook.tsv`：
+600 余条企业/机构号码，由 [metowolf/vCards](https://github.com/metowolf/vCards) 转换而来。
+
+```bash
+# 一键下载最新数据并生成（需要 GitHub CLI 和 Python）
+tools\update-phonebook.cmd
+
+# 或者指定已有的数据目录
+python tools/gen_phonebook.py --src <vcards 仓库>/data
+```
+
+**这个数据文件不在仓库里**（`.gitignore` 排除），原因是上游仓库没有 LICENSE，
+打包分发有版权风险。数据缺失时 `PhoneBook.ensureLoaded()` 返回 false，
+自动降级到内置的 `KnownNumbers`（71 条银行/快递/航空/运营商），功能不受影响。
+
+号码匹配做了三层归一化：
+- 去 `+86` / `0086` 前缀（含漫游时的 `+8695338` 这种短号）
+- 带区号固话同时存 `01053153053` 和去 0 的 `1053153053`
+- 不做「纯本地 8 位号」匹配 —— 不同城市会撞号，误判代价高于收益
+
 ---
 
 ## 六、后续阶段预留的扩展点

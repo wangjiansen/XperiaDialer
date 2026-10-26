@@ -119,11 +119,20 @@ object PhoneLocationDb {
         return null
     }
 
-    /** 去掉 +86 / 86 前缀、空格、括号、横线 */
+    /**
+     * 去掉 +86 / 0086 前缀、空格、括号、横线。
+     *
+     * 不能只按长度判断：`+8695338`（漫游或国际中转时客服短号也会带国家码）
+     * 只有 7 位，按「13 位才去 86」的规则会原样留下 `8695338`，黄页和号段都查不到。
+     * 国内没有任何合法号码以 86 开头（手机号 1x、固话 0x、400 号 4x、短号 1x/9x），
+     * 所以只要以 86 开头、且去掉后还剩至少 5 位（最短短号），就可以安全剥离。
+     */
     fun normalize(raw: String): String? {
         var s = raw.filter { it.isDigit() }
-        if (s.length == 13 && s.startsWith("86")) s = s.substring(2)
-        if (s.length == 15 && s.startsWith("0086")) s = s.substring(4)
+        when {
+            s.startsWith("0086") -> s = s.substring(4)
+            s.startsWith("86") && s.length >= 7 -> s = s.substring(2)
+        }
         return s.ifEmpty { null }
     }
 
