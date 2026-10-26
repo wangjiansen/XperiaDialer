@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,10 +45,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wangj.xperiadialer.R
 import com.wangj.xperiadialer.data.ContactsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -85,6 +88,13 @@ fun ContactsScreen(
     onRequestWritePermission: () -> Unit = {},
     onDataChanged: () -> Unit = {},
     onToast: (String) -> Unit = {},
+    /**
+     * 非空时在列表最顶部显示「新建联系人」入口。
+     *
+     * 只有通讯录页传它；常用联系人页虽然复用同一个组件，但那是「已加星标的几个人」，
+     * 顶上挂个新建入口没有意义，所以用 null 关掉。
+     */
+    onCreateContact: (() -> Unit)? = null,
 ) {
     if (!hasPermission) {
         ContactsHint(
@@ -156,6 +166,13 @@ fun ContactsScreen(
             state = listState,
             modifier = Modifier.fillMaxSize()
         ) {
+            // 新建联系人固定在最顶部，不参与字母分组
+            if (onCreateContact != null) {
+                item(key = "create_contact") {
+                    CreateContactRow(onClick = onCreateContact)
+                }
+            }
+
             groups.forEach { (initial, list) ->
                 if (showLetterHeader) {
                     item(key = "h_$initial") {
@@ -414,6 +431,43 @@ private fun SimBadge() {
             fontSize = 9.sp,
             color = SonyColors.TextSecondary,
             fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+/**
+ * 列表顶部的「新建联系人」入口，位置和样式对齐原机 Sony 拨号器：
+ * 和联系人行同样的行高与左右边距，左侧一个圆形图标位（品红底 + 白色加人图标），
+ * 这样它看起来就是列表的第一项，而不是飘在外面的按钮。
+ */
+@Composable
+private fun CreateContactRow(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 20.dp, end = 26.dp, top = 9.dp, bottom = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(SonyColors.Accent),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_sony_person_add),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(Modifier.width(14.dp))
+        Text(
+            text = "新建联系人",
+            fontSize = 16.sp,
+            color = SonyColors.TextPrimary
         )
     }
 }

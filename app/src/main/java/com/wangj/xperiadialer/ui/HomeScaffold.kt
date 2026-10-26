@@ -217,6 +217,20 @@ fun HomeScaffold(
                         onRequestWritePermission = onRequestWriteContactsPermission,
                         onDataChanged = onContactsChanged,
                         onToast = onToast,
+                        onCreateContact = {
+                            if (!hasWriteContactsPermission) {
+                                onRequestWriteContactsPermission()
+                            } else {
+                                ContactEditorController.open(
+                                    request = ContactEditorRequest(detail = null),
+                                    onSaved = { msg ->
+                                        onToast(msg)
+                                        onContactsChanged()
+                                    },
+                                    onFailed = { msg -> onToast(msg) },
+                                )
+                            }
+                        },
                     )
 
                     else -> CallLogScreen(
