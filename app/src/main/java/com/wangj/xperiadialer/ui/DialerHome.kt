@@ -40,6 +40,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -251,42 +256,57 @@ fun DialerHome(
             Spacer(Modifier.height(20.dp))
         }
 
-        // ---------- 数字键盘 ----------
-        SonyDialPad(
-            onDigit = onDigit,
+        /*
+         * ---------- 键盘面板（悬浮） ----------
+         *
+         * 对齐原机：整个键盘是一块白色面板，浮在页面底色之上，面板顶边向上一段
+         * 渐隐的投影把两层分开。不能用 Modifier.shadow —— 它只往下投，
+         * 而这里是面板盖住了上方内容，阴影要往上扩散。
+         */
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-
-        // ---------- 拨号键 ----------
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 10.dp, bottom = 24.dp),
-            contentAlignment = Alignment.Center
+                .dialPadPanel()
+                .padding(top = 10.dp)
         ) {
+            // ---------- 数字键盘 ----------
+            SonyDialPad(
+                onDigit = onDigit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+            // ---------- 拨号键 ----------
             Box(
                 modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .background(SonyColors.CallGreen)
-                    .then(
-                        if (number.isEmpty()) Modifier
-                        else Modifier.holdToRepeat(
-                            initialDelayMs = 600L,
-                            intervalMs = 120L,
-                            onTrigger = onDial
-                        )
-                    ),
+                    .fillMaxWidth()
+                    .padding(top = 10.dp, bottom = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_sony_call_white),
-                    contentDescription = "拨号",
-                    tint = if (number.isEmpty()) Color.White.copy(alpha = 0.55f) else Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        // 圆钮投影：让拨号键从白色面板上"浮"起来
+                        .shadow(elevation = 8.dp, shape = CircleShape)
+                        .clip(CircleShape)
+                        .background(SonyColors.CallGreen)
+                        .then(
+                            if (number.isEmpty()) Modifier
+                            else Modifier.holdToRepeat(
+                                initialDelayMs = 600L,
+                                intervalMs = 120L,
+                                onTrigger = onDial
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_sony_call_white),
+                        contentDescription = "拨号",
+                        tint = if (number.isEmpty()) Color.White.copy(alpha = 0.55f) else Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
         }
         }
@@ -573,3 +593,27 @@ private fun NumberMoreMenu(onPause: () -> Unit, onWait: () -> Unit) {
         }
     }
 }
+
+/**
+ * 键盘面板：白色圆角底 + 顶边向上的渐隐投影。
+ *
+ * 不能用 `Modifier.shadow` —— 它只会把阴影投在元素下方的外侧，
+ * 而键盘是从底部盖住页面内容的，阴影必须往**上**扩散才有"面板浮在内容上"的观感。
+ * `drawBehind` 排在 `clip` 之前，绘制内容超出节点边界也不会被裁掉，
+ * 所以能把投影画到面板顶边以上。
+ */
+private fun Modifier.dialPadPanel(): Modifier = this
+    .drawBehind {
+        val h = 26.dp.toPx()
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Black.copy(alpha = 0.16f), Color.Transparent),
+                startY = -h,
+                endY = 0f,
+            ),
+            topLeft = Offset(0f, -h),
+            size = Size(size.width, h),
+        )
+    }
+    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+    .background(Color.White)
