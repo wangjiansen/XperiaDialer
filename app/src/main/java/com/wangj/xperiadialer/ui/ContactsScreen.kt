@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -170,7 +171,13 @@ fun ContactsScreen(
                         )
                     }
                 }
-                items(list, key = { "ct_${it.id}_${it.number}" }) { contact ->
+                /*
+                 * key 必须用 Data 行主键 dataId：
+                 * 同一联系人可能由 SIM + 本地两个 RawContact 聚合，甚至同一个
+                 * RawContact 下存在两行相同号码（重复录入），只有 Data._ID 全局唯一。
+                 * 用 contactId + number 会撞 key 直接抛 IllegalArgumentException 崩页面。
+                 */
+                items(list, key = { "ct_${it.dataId}" }) { contact ->
                     /*
                      * 整行一个点击区：头像和文字都是同一个入口，打开联系人卡片。
                      *
@@ -199,13 +206,21 @@ fun ContactsScreen(
                         )
                         Spacer(Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = contact.displayName,
-                                fontSize = 16.sp,
-                                color = SonyColors.TextPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = contact.displayName,
+                                    fontSize = 16.sp,
+                                    color = SonyColors.TextPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    // fill = false：名字短的时候徽章紧跟名字，不要被推到最右边
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                if (contact.isSim) {
+                                    Spacer(Modifier.width(6.dp))
+                                    SimBadge()
+                                }
+                            }
                             if (contact.name.isNotBlank() && contact.number.isNotBlank()) {
                                 Spacer(Modifier.height(2.dp))
                                 Text(
@@ -377,5 +392,28 @@ private fun ContactsHint(
                 Button(onClick = onAction) { Text(actionText, fontSize = 14.sp) }
             }
         }
+    }
+}
+
+/**
+ * SIM 卡联系人标识：紧跟在姓名后面的小号灰底角标。
+ *
+ * 刻意做得轻——列表里绝大多数号码都是手机本地的，只有少数来自 SIM 卡，
+ * 标识太重会把视线从名字上抢走。
+ */
+@Composable
+private fun SimBadge() {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(3.dp))
+            .background(SonyColors.TextTertiary.copy(alpha = 0.14f))
+            .padding(horizontal = 4.dp, vertical = 1.dp)
+    ) {
+        Text(
+            text = "SIM",
+            fontSize = 9.sp,
+            color = SonyColors.TextSecondary,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

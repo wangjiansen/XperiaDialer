@@ -28,6 +28,28 @@ object ContactsRepository {
         val starred: Boolean = false,
         /** 联系人 lookup key，用于构造 QuickContact 的 lookup URI */
         val lookupKey: String = "",
+        /**
+         * 这个号码是否来自 SIM 卡。
+         *
+         * 按「号码」而不是「联系人」判断：一个联系人在系统里可能是多个 RawContact
+         * 聚合出来的，SIM 卡那个和手机本地那个各自带着自己的号码，
+         * 只有落到具体 RawContact 上才知道这个号存在哪。
+         */
+        val isSim: Boolean = false,
+        /**
+         * RawContact id。**LazyColumn 的 key 必须用它**：
+         * 同一个联系人（contactId）可能有多条相同号码的记录 ——
+         * 典型场景就是 SIM 卡和手机本地各存了一份，或者同一 RawContact 下
+         * 同号码被录了两遍。用 contactId + number 做 key 会直接撞车抛
+         * `IllegalArgumentException: Key was already used`，整个页面崩掉。
+         */
+        val rawId: Long = 0,
+        /**
+         * Data 表主键，**列表 key 用这个**。
+         * rawId 也不够：实测同一个 RawContact 下可能存在两行完全相同的号码
+         * （用户在通讯录里重复录入 / SIM 导入残留），只有 Data._ID 全局唯一。
+         */
+        val dataId: Long = 0,
     ) {
         /** 分组字母：A-Z，其他归 "#" */
         val initial: String
@@ -167,6 +189,38 @@ object ContactsRepository {
     )
     private const val PY_LETTER = "ABCDEFGHJKLMNOPQRSTWXYZ"
 
+    /**
+     * SIM 卡上的 RawContact id 集合。
+     *
+     * 系统没有「这张卡是不是 SIM」的直接字段，只能看 RawContact 的 account_type：
+     * AOSP 是 `com.android.sim`，三星是 `vnd.sec.contact.sim`，
+     * Sony 及运营商定制机还可能是别的名字。统一用「类型里含 sim」判断，
+     * 因为没有任何云账户类型会带 sim 这个词（本机实测：本地是
+     * com.sonyericsson.localcontacts，云是 com.google）。
+     *
+     * RawContacts 单独查一次再和 Phone 的结果 join：Data/Phone 表本身不含
+     * account_type，而一个联系人可能由 SIM + 本地两个 RawContact 聚合而成，
+     * 所以必须精确到 RawContact 才能判断「这个号码」存在哪。
+     */
+    private fun simRawContactIds(context: Context): Set<Long> {
+        val ids = HashSet<Long>()
+        runCatching {
+            context.contentResolver.query(
+                ContactsContract.RawContacts.CONTENT_URI,
+                arrayOf(ContactsContract.RawContacts._ID, ContactsContract.RawContacts.ACCOUNT_TYPE),
+                null, null, null
+            )?.use { c ->
+                val idIdx = c.getColumnIndexOrThrow(ContactsContract.RawContacts._ID)
+                val typeIdx = c.getColumnIndexOrThrow(ContactsContract.RawContacts.ACCOUNT_TYPE)
+                while (c.moveToNext()) {
+                    val type = c.getString(typeIdx).orEmpty()
+                    if (type.contains("sim", ignoreCase = true)) ids.add(c.getLong(idIdx))
+                }
+            }
+        }.onFailure { Log.w(TAG, "query raw contacts for sim flag failed", it) }
+        return ids
+    }
+
     fun query(context: Context, limit: Int = 2000): List<Entry> {
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
@@ -178,7 +232,12 @@ object ContactsRepository {
             ContactsContract.CommonDataKinds.Phone.STARRED,
             // QuickContact 需要 lookup key 才能构造 lookup URI
             ContactsContract.Contacts.LOOKUP_KEY,
+            // 用来判断这条号码存在 SIM 卡还是手机本地
+            ContactsContract.CommonDataKinds.Phone.RAW_CONTACT_ID,
+            // Data 行主键，LazyColumn 的唯一 key
+            ContactsContract.CommonDataKinds.Phone._ID,
         )
+        val simRawIds = simRawContactIds(context)
         return runCatching {
             /*
              * 注意：SORT_KEY_PRIMARY 这个常量的值本身已经带 " ASC"（形如
@@ -200,6 +259,8 @@ object ContactsRepository {
                 val sortIdx = c.getColumnIndex(ContactsContract.Contacts.SORT_KEY_PRIMARY)
                 val starredIdx = c.getColumnIndex(ContactsContract.CommonDataKinds.Phone.STARRED)
                 val lookupIdx = c.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY)
+                val rawIdx = c.getColumnIndex(ContactsContract.CommonDataKinds.Phone.RAW_CONTACT_ID)
+                val dataIdx = c.getColumnIndex(ContactsContract.CommonDataKinds.Phone._ID)
                 buildList {
                     while (c.moveToNext()) {
                         val name = c.getString(nameIdx).orEmpty()
@@ -214,6 +275,9 @@ object ContactsRepository {
                                 sortKey = if (sortIdx >= 0) c.getString(sortIdx).orEmpty() else name,
                                 starred = starredIdx >= 0 && c.getInt(starredIdx) != 0,
                                 lookupKey = if (lookupIdx >= 0) c.getString(lookupIdx).orEmpty() else "",
+                                isSim = rawIdx >= 0 && c.getLong(rawIdx) in simRawIds,
+                                rawId = if (rawIdx >= 0) c.getLong(rawIdx) else 0L,
+                                dataId = if (dataIdx >= 0) c.getLong(dataIdx) else 0L,
                             )
                         )
                     }
