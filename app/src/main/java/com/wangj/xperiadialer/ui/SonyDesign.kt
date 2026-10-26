@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -191,9 +192,17 @@ fun SonyDialKey(
             .height(64.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
+            /*
+             * 涟漪必须是**圆**的，和原机一致。
+             *
+             * 默认的 LocalIndication 是 bounded ripple，会按节点形状铺满整个键
+             * （约 110×64 的圆角矩形），点一下像一大块方块闪一下，很笨重。
+             * 把半径压到键高的一半，涟漪就成了一个以按下点为中心、直径等于键高
+             * 的圆；扩散到边界时正好是圆的顶端，视觉上轻盈得多。
+             */
             .clickable(
                 interactionSource = interaction,
-                indication = LocalIndication.current,
+                indication = ripple(radius = KEY_RIPPLE_RADIUS),
                 onClick = { onDigit(digit) },
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -227,6 +236,9 @@ fun SonyDialKey(
 
 /** 字母槽高度：视觉上等于 10sp 文字 + 少量呼吸空间 */
 private val LETTER_SLOT_HEIGHT = 14.dp
+
+/** 按键涟漪半径：等于键高(64dp)的一半，最终呈现为一个圆而不是整块矩形 */
+private val KEY_RIPPLE_RADIUS = 32.dp
 
 /** 3×4 完整拨号键盘 */
 @Composable
