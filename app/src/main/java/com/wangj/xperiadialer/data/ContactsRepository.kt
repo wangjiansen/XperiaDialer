@@ -50,6 +50,14 @@ object ContactsRepository {
          * （用户在通讯录里重复录入 / SIM 导入残留），只有 Data._ID 全局唯一。
          */
         val dataId: Long = 0,
+        /**
+         * 该联系人的**全部**号码。
+         *
+         * 列表上一个人只显示一条（[number] 是第一个号码），但拨号盘搜索必须
+         * 能搜到他的其它号码 —— 否则「只显示第一个」就等于把第二个号码弄丢了。
+         * 为空表示这个联系人只有一个号码。
+         */
+        val allNumbers: List<String> = emptyList(),
     ) {
         /** 分组字母：A-Z，其他归 "#" */
         val initial: String
@@ -64,6 +72,18 @@ object ContactsRepository {
 
         /** 纯数字号码，用于号码匹配（同时剥掉 +86 前缀） */
         val digits: String by lazy { PhoneLocationDb.normalize(number).orEmpty() }
+
+        /** 所有号码的数字形式，供搜索遍历；只有一个号码时就是 [digits] 本身 */
+        val allDigits: List<String> by lazy {
+            if (allNumbers.isEmpty()) {
+                listOf(digits)
+            } else {
+                val more = allNumbers.mapNotNull { raw ->
+                    PhoneLocationDb.normalize(raw)?.takeIf { it.isNotEmpty() }
+                }
+                (listOf(digits) + more).distinct()
+            }
+        }
 
         /**
          * 联系人 lookup URI，用于打开系统快捷联系人卡片（QuickContact）。
@@ -126,11 +146,15 @@ object ContactsRepository {
 
         val hits = ArrayList<Hit>(16)
         for (e in entries) {
+            // 号码匹配遍历这个人的所有号码：列表上只显示第一个，
+            // 但搜第二个号码也得能把人搜出来
+            val numPrefix = e.allDigits.any { it.startsWith(digits) }
+            val numContains = !numPrefix && e.allDigits.any { it.contains(digits) }
             val kind = when {
-                e.digits.startsWith(digits) -> MatchKind.NUMBER_PREFIX
+                numPrefix -> MatchKind.NUMBER_PREFIX
                 e.t9Full.startsWith(digits) -> MatchKind.PINYIN_PREFIX
                 e.t9Initials.startsWith(digits) -> MatchKind.INITIALS_PREFIX
-                e.digits.contains(digits) -> MatchKind.NUMBER_CONTAINS
+                numContains -> MatchKind.NUMBER_CONTAINS
                 e.t9Full.contains(digits) -> MatchKind.PINYIN_CONTAINS
                 else -> null
             } ?: continue
@@ -221,6 +245,36 @@ object ContactsRepository {
         return ids
     }
 
+    /**
+     * 同一个联系人的多个号码合并成一条，只保留排序后的第一个。
+     *
+     * Provider 返回的是「号码」维度：一个人存了手机号和座机，就会出两行，
+     * 通讯录里看着像重名的两个人。这里按 contactId 收成一条，
+     * 列表上只露主号码（完整号码在点开后的联系人卡片里看）。
+     *
+     * 依赖分组的行来自同一次按 SORT_KEY 排序的查询，同一联系人的行必然相邻；
+     * 用 HashSet 保序去重，保留的是排序后最先出现的那条，
+     * 它的 dataId / isSim 也随之成为这条记录的身份 —— 显示的号码在 SIM 卡上
+     * 才会打 SIM 标，和列表上看到的内容保持一致。
+     */
+    private fun mergeByContact(list: List<Entry>): List<Entry> {
+        val first = LinkedHashMap<Long, Entry>(list.size)
+        val extra = HashMap<Long, MutableList<String>>()
+        for (e in list) {
+            if (!first.containsKey(e.id)) {
+                first[e.id] = e
+            } else {
+                extra.getOrPut(e.id) { ArrayList(2) }.add(e.number)
+            }
+        }
+        if (extra.isEmpty()) return first.values.toList()
+        // 其余号码挂到 allNumbers 上，列表不显示但搜索能命中
+        return first.values.map { e ->
+            val more = extra[e.id] ?: return@map e
+            e.copy(allNumbers = listOf(e.number) + more)
+        }
+    }
+
     fun query(context: Context, limit: Int = 2000): List<Entry> {
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
@@ -282,7 +336,9 @@ object ContactsRepository {
                         )
                     }
                 }
-            }?.let { list -> list.take(limit).also { warmUp(it) } } ?: emptyList()
+            }?.let { list ->
+                mergeByContact(list).take(limit).also { warmUp(it) }
+            } ?: emptyList()
         }.onFailure {
             Log.w(TAG, "query contacts failed", it)
         }.getOrDefault(emptyList())
