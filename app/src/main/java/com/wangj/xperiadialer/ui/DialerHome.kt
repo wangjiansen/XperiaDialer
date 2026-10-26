@@ -609,9 +609,11 @@ private fun Modifier.dialPadPanel(): Modifier = this
         val h = 26.dp.toPx()
         drawRect(
             brush = Brush.verticalGradient(
+                // 顺序是「面板边上最浓 → 往上越来越淡」，别写反：
+                // verticalGradient 把 colors[0] 放在 startY、最后一个放在 endY
                 colors = listOf(Color.Black.copy(alpha = 0.16f), Color.Transparent),
-                startY = -h,
-                endY = 0f,
+                startY = 0f,
+                endY = -h,
             ),
             topLeft = Offset(0f, -h),
             size = Size(size.width, h),

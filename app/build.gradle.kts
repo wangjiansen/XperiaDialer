@@ -12,8 +12,8 @@ android {
         applicationId = "com.wangj.xperiadialer"
         minSdk = 29
         targetSdk = 35
-        versionCode = 41
-        versionName = "1.15.3"
+        versionCode = 42
+        versionName = "1.15.4"
     }
 
     // phone.dat 号段库不压缩，避免每次启动解压 4.6MB
