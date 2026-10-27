@@ -238,8 +238,8 @@ fun SonyDialKey(
 /** 字母槽高度：视觉上等于 10sp 文字 + 少量呼吸空间 */
 private val LETTER_SLOT_HEIGHT = 14.dp
 
-/** 按键涟漪半径：明显大于键高(64dp)的一半，对齐原机那种「扩散很远」的大圆 */
-private val KEY_RIPPLE_RADIUS = 56.dp
+/** 按键涟漪半径：远大于键高(64dp)，对齐原机那种「扩散很远」的大圆 */
+private val KEY_RIPPLE_RADIUS = 72.dp
 
 /** 3×4 完整拨号键盘 */
 @Composable

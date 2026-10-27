@@ -254,7 +254,9 @@ fun HomeScaffold(
                     onClick = { dialerOpen = true },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 18.dp, bottom = 18.dp)
+                        // 热区比视觉圆大 20dp，四周各多出 10dp，
+                        // padding 减 10dp 才能让视觉圆心停在原来的位置
+                        .padding(end = 8.dp, bottom = 8.dp)
                 )
             }
 
@@ -327,26 +329,46 @@ private const val TAB_FAVORITES = 0
 private const val TAB_CALLLOG = 1
 private const val TAB_CONTACTS = 2
 
-/** 悬浮拨号键：品红圆 + 九宫格图标，和原机一致 */
+/**
+ * 悬浮拨号键：品红圆 + 九宫格图标，和原机一致。
+ *
+ * 点击热区比视觉圆大一圈（76dp vs 56dp）：这个按钮浮在通话记录列表上方，
+ * 正下方就是某一行的「拨出」图标，热区太小的话手指稍微偏一点就会点成拨号，
+ * 直接打出去 —— 代价太大。热区放大后重叠区域归 FAB，误触方向就倒过来了
+ * （最坏情况是打开了拨号盘，而不是拨出电话）。
+ */
 @Composable
 private fun DialFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .size(56.dp)
-            .shadow(6.dp, CircleShape)
+            .size(FAB_TOUCH_SIZE)
             .clip(CircleShape)
-            .background(SonyColors.Accent)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_sony_dialpad),
-            contentDescription = "拨号盘",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(FAB_VISUAL_SIZE)
+                .shadow(6.dp, CircleShape)
+                .clip(CircleShape)
+                .background(SonyColors.Accent),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_sony_dialpad),
+                contentDescription = "拨号盘",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 }
+
+/** FAB 视觉直径 */
+private val FAB_VISUAL_SIZE = 56.dp
+
+/** FAB 点击热区直径：比视觉大 20dp，把容易误触的边角也吃进来 */
+private val FAB_TOUCH_SIZE = 76.dp
 
 @Composable
 private fun BottomTab(
