@@ -93,8 +93,6 @@ fun HomeScaffold(
     homeResetTick: Int = 0,
     // 菜单
     onOpenPermissions: () -> Unit,
-    onPreviewIncoming: () -> Unit,
-    onPreviewActive: () -> Unit,
     onOpenDiagnostics: () -> Unit,
 ) {
     // 原机默认停在通话记录
@@ -167,14 +165,6 @@ fun HomeScaffold(
                         DropdownMenuItem(
                             text = { Text("权限设置") },
                             onClick = { menuOpen = false; onOpenPermissions() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("预览来电界面") },
-                            onClick = { menuOpen = false; onPreviewIncoming() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("预览通话界面") },
-                            onClick = { menuOpen = false; onPreviewActive() }
                         )
                         DropdownMenuItem(
                             text = { Text("调试诊断") },

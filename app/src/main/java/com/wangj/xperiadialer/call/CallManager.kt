@@ -134,6 +134,10 @@ object CallManager {
     }
 
     // ---------- DEBUG：界面预览（不需要真实来电） ----------
+    //
+    // 注意：界面上已经不再提供入口（三点菜单里的「预览来电/预览通话」已移除），
+    // 这套 API 保留是因为 fakeState 还嵌在接听/拒接/静音/路由等分支里，
+    // 拆掉属于独立重构；需要时可通过代码或调试手段直接调用验证界面。
 
     /** 预览来电界面 */
     fun previewIncoming(number: String, name: String = "") = publishFake(

@@ -212,8 +212,8 @@ fun MainScreen(initialNumber: String, homeResetTick: Int = 0) {
     var showPermissions by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
     var verdict by remember { mutableStateOf<SpamVerdict?>(null) }
-    // 预览来电要先异步查通讯录取名字，所以需要一个组合作用域
-    val previewScope = rememberCoroutineScope()
+    // 供删除通话记录这类一次性 IO 操作用（原来叫 previewScope，预览入口移除后改名）
+    val ioScope = rememberCoroutineScope()
 
     // 输入 5 位以上实时判定，结果直接显示在号码下方
     LaunchedEffect(number) {
@@ -288,7 +288,7 @@ fun MainScreen(initialNumber: String, homeResetTick: Int = 0) {
         },
         // 删除通话记录（来自「通话详情」），删完重新拉一次列表
         onDeleteCallLog = { id ->
-            previewScope.launch {
+            ioScope.launch {
                 withContext(Dispatchers.IO) { CallLogRepository.delete(context, id) }
                 actionTick++ // refresh 是 actionTick + resumeTick 的只读组合，递增它才能触发重载
             }
@@ -318,26 +318,6 @@ fun MainScreen(initialNumber: String, homeResetTick: Int = 0) {
         onContactsChanged = { actionTick++ },
         onToast = { toastMsg = it },
         onOpenPermissions = { showPermissions = true },
-        onPreviewIncoming = {
-            /*
-             * 名字留空、号码取通讯录里真实存在的一个。
-             *
-             * 这样预览才和真实来电一致：Telecom 不提供 callerDisplayName，
-             * 名字得靠通讯录解析出来。传「测试来电」是假数据，会把
-             * 「来电不显示联系人」这类问题掩盖掉。
-             */
-            previewScope.launch {
-                val name = withContext(Dispatchers.IO) {
-                    ContactsRepository.lookupName(context, PREVIEW_INCOMING_NUMBER).orEmpty()
-                }
-                CallManager.previewIncoming(PREVIEW_INCOMING_NUMBER, name)
-                openInCall(context)
-            }
-        },
-        onPreviewActive = {
-            CallManager.previewActive("10086", "中国移动")
-            openInCall(context)
-        },
         onOpenDiagnostics = { showDiagnostics = true },
         homeResetTick = homeResetTick,
     )
@@ -379,22 +359,6 @@ fun MainScreen(initialNumber: String, homeResetTick: Int = 0) {
 
 private fun granted(context: Context, permission: String): Boolean =
     ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-
-/** 打开通话界面（预览模式用） */
-private fun openInCall(context: Context) {
-    val intent = Intent(context, InCallActivity::class.java)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    runCatching { context.startActivity(intent) }
-}
-
-/**
- * 预览来电用的号码。
- *
- * 默认是黄页里已有的「小米」北京固话，预览时能一次看到完整链路：
- * 机构 logo + 机构名当主标题 + 分类徽章 + 归属地。
- * 想验证「姓名由通讯录解析」就换成你通讯录里的号码（通讯录永远优先于黄页）。
- */
-private const val PREVIEW_INCOMING_NUMBER = "01060606666"
 
 /** 识别结果展示区的固定高度 */
 private val SPAM_PREVIEW_HEIGHT = 28.dp
