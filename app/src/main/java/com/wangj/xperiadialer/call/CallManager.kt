@@ -345,9 +345,18 @@ object CallManager {
             Log.i(TAG, "setMuted $muted (preview)")
             return
         }
+        /*
+         * 乐观更新 + 真实值纠正。
+         *
+         * isMuted 是从 CallAudioState 回读的，而 setMuted() 是异步下发给 Telecom 的：
+         * 调完立刻 push() 拿到的还是**旧的** CallAudioState，会把按钮状态覆盖回去，
+         * 表现就是「点了静音没反应」，几十毫秒后系统回调到了才跳变。
+         * 所以先本地置位让按钮立刻响应，真实状态由 onCallAudioStateChanged
+         * 触发的 push() 覆盖纠正 —— 万一真静音失败，界面也会被纠正回来。
+         */
+        _uiState.value = _uiState.value.copy(isMuted = muted)
         synchronized(lock) { service }?.setMuted(muted)
         Log.i(TAG, "setMuted $muted")
-        push()
     }
 
     /**
@@ -364,9 +373,10 @@ object CallManager {
             Log.i(TAG, "setAudioRoute $route (preview)")
             return
         }
+        // 同 setMuted：audioRoute 也来自 CallAudioState 回读，先本地置位避免按钮无反馈
+        _uiState.value = _uiState.value.copy(audioRoute = route)
         synchronized(lock) { service }?.setAudioRoute(route)
         Log.i(TAG, "setAudioRoute $route")
-        push()
     }
 
     /** DTMF：按下播放，180ms 后停止（模拟按键音时长） */
